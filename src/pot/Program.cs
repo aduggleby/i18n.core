@@ -2,15 +2,19 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using CommandLine;
 using i18n.Core;
+using i18n.Core.Abstractions;
 using i18n.Core.Abstractions.Domain;
+using i18n.Core.PortableObject;
 using i18n.Core.Pot;
 using i18n.Core.Pot.Entities;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace pot
 {
@@ -31,6 +35,19 @@ namespace pot
 
         [Option("watch-delay", Required = false, HelpText = "Delay between each build (throttling). Default value is 500 ms. ")]
         public int WatchDelay { get; [UsedImplicitly] set; } = 500;
+
+        [Option("project", Required = false, HelpText = "Path to source files to project")]
+        public string Project { get; [UsedImplicitly] set; }
+
+        [Option("project-default-lang", Required = false, HelpText = "Language name of default pot file.")]
+        public string ProjectDefaultLang { get; [UsedImplicitly] set; }
+
+        [Option("project-output", Required = false, HelpText = "Path to write projected output files to.")]
+        public string ProjectOutput { get; [UsedImplicitly] set; }
+
+        [Option("project-force", Required = false, HelpText = "Force overwriting of output files in project output.")]
+        public bool ProjectForce { get; [UsedImplicitly] set; }
+
     }
 
     [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
@@ -112,6 +129,11 @@ namespace pot
                 return Watch(options, projectDirectory, webConfigFilename, () => Build(projectDirectory, webConfigFilename, options.WatchDelay));
             }
 
+            if (options.Project != null)
+            {
+                return Project(options, projectDirectory, webConfigFilename, () => Build(projectDirectory, webConfigFilename, options.WatchDelay));
+            }
+
             Build(projectDirectory, webConfigFilename);
 
             return 0;
@@ -137,7 +159,7 @@ namespace pot
                         Console.Error.WriteLine($"Watch directory does not exist: {directory}");
                         return 1;
                     }
-                    
+
                     var watcher = new FileSystemWatcher
                     {
                         Path = directory,
@@ -186,7 +208,174 @@ namespace pot
                     watcher.Dispose();
                 }
             }
-            
+
+            return 0;
+        }
+
+        static int Project(Options options, string projectDirectory, string webConfigFilename, Action onChangeAction)
+        {
+            var settingsProvider = (ISettingsProvider)new SettingsProvider(projectDirectory);
+            settingsProvider.PopulateFromWebConfig(webConfigFilename);
+            var settings = new I18NLocalizationOptions(settingsProvider);
+            var watchers = new List<FileSystemWatcher>();
+
+            var filters = settings.WhiteList.Where(x => x.StartsWith("*.")).ToList();
+
+            Console.WriteLine($"Projecting directories: {string.Join(", ", settings.DirectoriesToScan)}. Filters: {string.Join(", ", filters)}");
+
+            var repository = new PoTranslationRepository(settings, _assemblyVersionStr);
+
+            if (string.IsNullOrWhiteSpace(options.ProjectDefaultLang))
+            {
+                Console.Error.WriteLine($"Default culture not specified. Use --project-default-lang");
+                return 1;
+            }
+            CultureInfo defaultCulture = CultureInfo.GetCultureInfo(options.ProjectDefaultLang);
+            if (defaultCulture == null)
+            {
+                Console.Error.WriteLine($"Default culture not found: {options.ProjectDefaultLang}");
+                return 1;
+            }
+            string[] langs = new string[] { defaultCulture.Name }.Union(repository.GetAvailableLanguages().Select(x => x.LanguageShortTag)).ToArray();
+            Console.WriteLine($"Using default language for project: {defaultCulture.Name}");
+            Console.WriteLine($"Found languages for project: {string.Join(", ", langs)}");
+            Console.WriteLine($"Projecting with locales from: {settings.LocaleDirectory}");
+
+            ILocalizationManager localizationManager = new LocalizationManager(
+                new IPluralRuleProvider[] { new DefaultPluralRuleProvider() },
+                new PortableObjectFilesTranslationsProvider(new DirectoryPoFileLocationProvider(settings.LocaleDirectory, defaultCulture.Name)),
+                new MemoryCache(new MemoryCacheOptions()),
+                new DefaultNuggetReplacer()
+                );
+
+
+            try
+            {
+                var directory = Path.GetFullPath(options.Project);
+
+                if (!Directory.Exists(directory))
+                {
+                    Console.Error.WriteLine($"Directory does not exist: {directory}");
+                    return 1;
+                }
+
+                string outputDirectory;
+
+                if (options.ProjectOutput != null)
+                {
+                    outputDirectory = Path.GetFullPath(Path.GetDirectoryName(options.ProjectOutput)!);
+                }
+                else
+                {
+                    outputDirectory = Path.Combine(directory, "projected");
+                }
+
+                if (!Directory.Exists(outputDirectory))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(outputDirectory);
+                        if (options.Verbose) Console.Out.WriteLine($"Directory created: {outputDirectory} ");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"Directory {outputDirectory} could not be created: {ex.Message}");
+                        return 1;
+                    }
+                }
+
+                if (options.Verbose) Console.Out.WriteLine($"Projecting into directory: {outputDirectory} ");
+
+                foreach (var lang in langs)
+                {
+                    Console.Out.WriteLine($"Projecting language: {lang}");
+                    foreach (var subdirectory in Directory.GetDirectories(directory))
+                    {
+                        if (Path.GetFullPath(subdirectory) != outputDirectory && !Path.GetFileName(subdirectory).StartsWith("_"))
+                        {
+                            if (options.Verbose) Console.Out.WriteLine($"Projecting directory: {subdirectory}");
+
+                            var langOutputDirectory = Path.Combine(outputDirectory, $"{lang}-{Path.GetFileName(subdirectory)}");
+
+                            if (!Directory.Exists(langOutputDirectory))
+                            {
+                                try
+                                {
+                                    Directory.CreateDirectory(langOutputDirectory);
+                                    if (options.Verbose) Console.Out.WriteLine($"Directory created: {langOutputDirectory} ");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.Error.WriteLine($"Directory {langOutputDirectory} could not be created: {ex.Message}");
+                                    return 1;
+                                }
+                            }
+
+                            foreach (var file in Directory.GetFiles(subdirectory))
+                            {
+                                if (options.Verbose) Console.Out.WriteLine($"Projecting file: {file}");
+
+                                var translatedFileContents = localizationManager.Translate(CultureInfo.GetCultureInfo(lang), File.ReadAllText(file));
+
+                                var outputFile = Path.Combine(langOutputDirectory, Path.GetFileName(file));
+
+                                if (options.Verbose) Console.Out.WriteLine($"Writing output: {outputFile}");
+                                if (File.Exists(outputFile) && !options.ProjectForce)
+                                {
+                                    Console.Error.WriteLine($"File {outputFile} already exists. Use --project-force to overwrite.");
+                                    return 1;
+                                }
+                                File.WriteAllText(outputFile, translatedFileContents);
+
+                            }
+                        }
+                    }
+
+
+                }
+
+                //foreach (var subdirectory in Directory.GetDirectories(directory))
+                //{
+                //    if (Path.GetFullPath(subdirectory) != outputDirectory && Path.GetFileName(subdirectory).StartsWith("_"))
+                //    {
+                //        var copyOutputDirectory = Path.Combine(outputDirectory, $"{Path.GetFileName(subdirectory)}");
+
+                //        if (!Directory.Exists(copyOutputDirectory))
+                //        {
+                //            try
+                //            {
+                //                Directory.CreateDirectory(copyOutputDirectory);
+                //                if (options.Verbose) Console.Out.WriteLine($"Directory created: {copyOutputDirectory} ");
+                //            }
+                //            catch (Exception ex)
+                //            {
+                //                Console.Error.WriteLine($"Directory {copyOutputDirectory} could not be created: {ex.Message}");
+                //                return 1;
+                //            }
+                //        }
+
+                //        foreach (var file in Directory.GetFiles(subdirectory))
+                //        {
+                //            if (options.Verbose) Console.Out.WriteLine($"Copying file: {file}");
+
+                //            var outputFile = Path.Combine(copyOutputDirectory, Path.GetFileName(file));
+
+                //            if (options.Verbose) Console.Out.WriteLine($"Writing output: {outputFile}");
+                //            if (File.Exists(outputFile) && !options.ProjectForce)
+                //            {
+                //                Console.Error.WriteLine($"File {outputFile} already exists. Use --project-force to overwrite.");
+                //                return 1;
+                //            }
+                //            File.Copy(file, outputFile);
+                //        }
+                //    }
+                //}
+            }
+            finally
+            {
+
+            }
+
             return 0;
         }
 
@@ -200,7 +389,7 @@ namespace pot
                 }
 
                 if (buildDelayMilliseconds > 0
-                    && _lastBuildDate.HasValue 
+                    && _lastBuildDate.HasValue
                     && DateTime.Now - _lastBuildDate.Value < TimeSpan.FromMilliseconds(buildDelayMilliseconds))
                 {
                     return;

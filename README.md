@@ -68,6 +68,16 @@ dotnet tool install pot -g
 pot --watch
 ```
 
+### Generate localized outputs from .pot files
+
+The project command is useful when you need to create different localized files to upload to somewhere. For example mail templates that don't support I18N natively.
+
+```
+pot --project .\templates\ --project-default-lang en-US
+```
+
+Specify the template directory and the default language that corresponds to your messages.pot file. The remaining configuration will be read from the web.config file.
+
 ### Custom configuration (Web.config)
 
 NB! This is not required for this to work as you can configure this middleware by resolving `IOptions<I18NLocalizationOptions>`. It's available for legacy reasons only.
@@ -88,6 +98,11 @@ NB! This is not required for this to work as you can configure this middleware b
 A demo project is available in this repository. You can find it [here](https://github.com/fintermobilityas/i18n.core/tree/master/src/i18n.Demo)
 
 ### Special thanks to
+
+This project is a fork of:
+
+- https://github.com/fintermobilityas/i18n.core
+
 
 This project is mainly built on hard work of the following projects:
 
