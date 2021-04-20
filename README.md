@@ -61,11 +61,34 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 }
 ```
 
-### Automatically update *.pot file (Portable Object Template)
+### Install pot  CLI tool
 
 ```
 dotnet tool install pot -g
+```
+
+### Create or update pot file 
+
+```
+pot
+```
+
+This will scan your files for Nuggets and add them to the main POT file and merge any changes into the language PO files. If you only want to update the POT file, but not merge changes into PO files pass the following argument:
+
+```
+pot --build-no-merge
+```
+
+### Automatically update pot files when files change
+
+```
 pot --watch
+```
+
+or
+
+```
+pot --watch --build-no-merge
 ```
 
 ### Generate localized outputs from .pot files

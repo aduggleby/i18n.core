@@ -36,6 +36,9 @@ namespace pot
         [Option("watch-delay", Required = false, HelpText = "Delay between each build (throttling). Default value is 500 ms. ")]
         public int WatchDelay { get; [UsedImplicitly] set; } = 500;
 
+        [Option("build-no-merge", Required = false, HelpText = "Prevent merging POT changes automatically into PO language files.")]
+        public bool DontMergeOnBuild { get; [UsedImplicitly] set; }
+
         [Option("project", Required = false, HelpText = "Path to source files to project")]
         public string Project { get; [UsedImplicitly] set; }
 
@@ -126,15 +129,15 @@ namespace pot
 
             if (options.Watch)
             {
-                return Watch(options, projectDirectory, webConfigFilename, () => Build(projectDirectory, webConfigFilename, options.WatchDelay));
+                return Watch(options, projectDirectory, webConfigFilename, () => Build(options, projectDirectory, webConfigFilename, options.WatchDelay));
             }
 
             if (options.Project != null)
             {
-                return Project(options, projectDirectory, webConfigFilename, () => Build(projectDirectory, webConfigFilename, options.WatchDelay));
+                return Project(options, projectDirectory, webConfigFilename, () => Build(options, projectDirectory, webConfigFilename, options.WatchDelay));
             }
 
-            Build(projectDirectory, webConfigFilename);
+            Build(options, projectDirectory, webConfigFilename);
 
             return 0;
         }
@@ -286,54 +289,19 @@ namespace pot
 
                 if (options.Verbose) Console.Out.WriteLine($"Projecting into directory: {outputDirectory} ");
 
-                foreach (var lang in langs)
+                try
                 {
-                    Console.Out.WriteLine($"Projecting language: {lang}");
-                    foreach (var subdirectory in Directory.GetDirectories(directory))
+                    foreach (var lang in langs)
                     {
-                        if (Path.GetFullPath(subdirectory) != outputDirectory && !Path.GetFileName(subdirectory).StartsWith("_"))
-                        {
-                            if (options.Verbose) Console.Out.WriteLine($"Projecting directory: {subdirectory}");
-
-                            var langOutputDirectory = Path.Combine(outputDirectory, $"{lang}-{Path.GetFileName(subdirectory)}");
-
-                            if (!Directory.Exists(langOutputDirectory))
-                            {
-                                try
-                                {
-                                    Directory.CreateDirectory(langOutputDirectory);
-                                    if (options.Verbose) Console.Out.WriteLine($"Directory created: {langOutputDirectory} ");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.Error.WriteLine($"Directory {langOutputDirectory} could not be created: {ex.Message}");
-                                    return 1;
-                                }
-                            }
-
-                            foreach (var file in Directory.GetFiles(subdirectory))
-                            {
-                                if (options.Verbose) Console.Out.WriteLine($"Projecting file: {file}");
-
-                                var translatedFileContents = localizationManager.Translate(CultureInfo.GetCultureInfo(lang), File.ReadAllText(file));
-
-                                var outputFile = Path.Combine(langOutputDirectory, Path.GetFileName(file));
-
-                                if (options.Verbose) Console.Out.WriteLine($"Writing output: {outputFile}");
-                                if (File.Exists(outputFile) && !options.ProjectForce)
-                                {
-                                    Console.Error.WriteLine($"File {outputFile} already exists. Use --project-force to overwrite.");
-                                    return 1;
-                                }
-                                File.WriteAllText(outputFile, translatedFileContents);
-
-                            }
-                        }
+                        Console.Out.WriteLine($"Projecting language: {lang}");
+                        Process(options, lang, localizationManager, directory, outputDirectory);
                     }
-
-
                 }
-
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    return 1;
+                }
                 //foreach (var subdirectory in Directory.GetDirectories(directory))
                 //{
                 //    if (Path.GetFullPath(subdirectory) != outputDirectory && Path.GetFileName(subdirectory).StartsWith("_"))
@@ -379,7 +347,61 @@ namespace pot
             return 0;
         }
 
-        static void Build(string projectDirectory, string webConfigFilename, int buildDelayMilliseconds = -1)
+        private static void Process(Options options, string lang, ILocalizationManager localizationManager, string directory, string outputDirectory)
+        {
+            foreach (var subdirectory in Directory.GetDirectories(directory))
+            {
+                if (Path.GetFullPath(subdirectory) != outputDirectory)
+                {
+                    if (Path.GetFileName(subdirectory).StartsWith("_"))
+                    {
+                        if (options.Verbose) Console.Out.WriteLine($"Projecting a sub directory starting with _: {subdirectory}");
+                        Process(options, lang, localizationManager, Path.GetFullPath(subdirectory), Path.Combine(outputDirectory, Path.GetFileName(subdirectory)));
+                    }
+                    else
+                    {
+                        if (options.Verbose) Console.Out.WriteLine($"Projecting directory: {subdirectory}");
+
+                        var langOutputDirectory = Path.Combine(outputDirectory, $"{lang}-{Path.GetFileName(subdirectory)}");
+
+                        if (!Directory.Exists(langOutputDirectory))
+                        {
+                            try
+                            {
+                                Directory.CreateDirectory(langOutputDirectory);
+                                if (options.Verbose) Console.Out.WriteLine($"Directory created: {langOutputDirectory} ");
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new ApplicationException($"Directory {langOutputDirectory} could not be created: {ex.Message}");
+                            }
+                        }
+
+                        foreach (var file in Directory.GetFiles(subdirectory))
+                        {
+                            if (options.Verbose) Console.Out.WriteLine($"Projecting file: {file}");
+
+                            var translatedFileContents = localizationManager.Translate(CultureInfo.GetCultureInfo(lang), File.ReadAllText(file));
+
+                            var outputFile = Path.Combine(langOutputDirectory, Path.GetFileName(file));
+
+                            if (options.Verbose) Console.Out.WriteLine($"Writing output: {outputFile}");
+                            if (File.Exists(outputFile) && !options.ProjectForce)
+                            {
+
+                                throw new ApplicationException($"File {outputFile} already exists. Use --project-force to overwrite.");
+                            }
+                            File.WriteAllText(outputFile, translatedFileContents);
+                        }
+
+                    }
+                }
+
+            }
+
+        }
+
+        static void Build(Options options, string projectDirectory, string webConfigFilename, int buildDelayMilliseconds = -1)
         {
             lock (BuildLock)
             {
@@ -413,8 +435,11 @@ namespace pot
                 var items = nuggetFinder.ParseAll();
                 if (repository.SaveTemplate(items))
                 {
-                    var merger = new TranslationMerger(repository);
-                    merger.MergeAllTranslation(items);
+                    if (!options.DontMergeOnBuild)
+                    {
+                        var merger = new TranslationMerger(repository);
+                        merger.MergeAllTranslation(items);
+                    }
                 }
 
                 sw.Stop();
