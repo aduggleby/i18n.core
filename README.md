@@ -1,17 +1,11 @@
-# i18n.Core
+# i18n.Core: Smart internationalization for ASP.NET Core
 
-- **stable** ![Nuget](https://img.shields.io/nuget/v/i18n.core) 
-- **pre-release**: ![Nuget](https://img.shields.io/nuget/vpre/i18n.core)
-- [![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=fintermobilityas/i18n.core)](https://dependabot.com)
- 
-| Build server | Platforms | Build status |
-|--------------|----------|--------------|
-| Github Actions | windows-latest, ubuntu-latest | Branch: develop ![i18n.core](https://github.com/fintermobilityas/i18n.core/workflows/i18n.core/badge.svg?branch=develop) |
-| Github Actions | windows-latest, ubuntu-latest | Branch: master ![i18n.core](https://github.com/fintermobilityas/i18n.core/workflows/i18n.core/badge.svg?branch=master) |
+This is a fork of [https://github.com/fintermobilityas/i18n.core]() that is not published on Nuget. Adds some functionality such as:
 
-## Smart internationalization for ASP.NET Core
+- projecting translated files
+- building POT without merging into PO
+- adds formatting fragment (e.g. [[[For %0 do %1|||Alice|||Bob]]])
 
-Sponsored by Finter Mobility AS. We are hiring! Check out our remote positions over at [finterjobs.com](https://finterjobs.com).
 
 ### Platforms supported
 
@@ -63,11 +57,17 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 
 ### Install pot  CLI tool
 
+The CLI tool allows running certain translations processes from the command line. This is useful to add to your csproj as a BeforeBuild step to ensure your POT (and optionally PO) files are always in sync with your source code.
+
+If you build and compile to your own Nuget repository, you can use this command to install it globally:
+
 ```
 dotnet tool install pot -g
 ```
 
-### Create or update pot file 
+Otherwise use the full path to the POT.exe in the following examples.
+
+#### Create or update pot file 
 
 ```
 pot
@@ -79,7 +79,7 @@ This will scan your files for Nuggets and add them to the main POT file and merg
 pot --build-no-merge
 ```
 
-### Automatically update pot files when files change
+#### Automatically update pot files when files change
 
 ```
 pot --watch
@@ -91,7 +91,7 @@ or
 pot --watch --build-no-merge
 ```
 
-### Generate localized outputs from .pot files
+#### Generate localized outputs from .pot files
 
 The project command is useful when you need to create different localized files to upload to somewhere. For example mail templates that don't support I18N natively.
 
