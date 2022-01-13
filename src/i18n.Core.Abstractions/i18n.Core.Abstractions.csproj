@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <RootNamespace>i18n.Core.Abstractions</RootNamespace>
     <AssemblyNamespace>i18n.Core.Abstractions</AssemblyNamespace>
     <IsPackable>true</IsPackable>

@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>pot</RootNamespace>
     <AssemblyName>pot</AssemblyName>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <IsPackable>true</IsPackable>
     <IsTestProject>false</IsTestProject>
     <PackAsTool>true</PackAsTool>
@@ -13,7 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.8.0" />
-    <PackageReference Include="JetBrains.Annotations" Version="2021.1.0" />
+    <PackageReference Include="JetBrains.Annotations" Version="2021.3.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\i18n.Core\i18n.Core.csproj" />

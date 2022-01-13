@@ -1,11 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <RootNamespace>i18n.Core</RootNamespace>
     <AssemblyNamespace>i18n.Core</AssemblyNamespace>
     <IsPackable>true</IsPackable>
     <IsTestProject>false</IsTestProject>
+    <AssemblyName>SI.$(MSBuildProjectName)</AssemblyName>
+    <Authors />
+    <Copyright />
+    <Description>Adapted from Finter Mobility I18N.Core</Description>
+    <PackageProjectUrl>https://github.com/aduggleby/i18n.core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/aduggleby/i18n.core.git</RepositoryUrl>
+    <Version>0.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,10 +20,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="JetBrains.Annotations" Version="2021.1.0">
+    <PackageReference Include="JetBrains.Annotations" Version="2021.3.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="2.0.0" />
+    <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>
