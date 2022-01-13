@@ -6,8 +6,13 @@
     <AssemblyNamespace>i18n.Core.Abstractions</AssemblyNamespace>
     <IsPackable>true</IsPackable>
     <IsTestProject>false</IsTestProject>
-    <PackageId>i18n.Core.Abstractions</PackageId>
-    <Description>Core abstractions package for the i18n project.</Description>
+	  <AssemblyName>SI.$(MSBuildProjectName)</AssemblyName>
+
+	  <Description>Core abstractions package for the i18n project.</Description>
+	  <Description>Adapted from Finter Mobility I18N.Core</Description>
+	  <PackageProjectUrl>https://github.com/aduggleby/i18n.core</PackageProjectUrl>
+	  <RepositoryUrl>https://github.com/aduggleby/i18n.core.git</RepositoryUrl>
+	  <Version>0.4.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

@@ -12,7 +12,7 @@
     <Description>Adapted from Finter Mobility I18N.Core</Description>
     <PackageProjectUrl>https://github.com/aduggleby/i18n.core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/aduggleby/i18n.core.git</RepositoryUrl>
-    <Version>0.2.0</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

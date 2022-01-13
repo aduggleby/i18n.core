@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30011.22
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "i18n.Core", "src\i18n.Core\i18n.Core.csproj", "{A70F7556-64BA-40A6-ACC4-D555A4884316}"
 EndProject
@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "pot", "src\pot\pot.csproj",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{1915DAA3-F2CB-4955-B244-1738E69146FD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "i18n.Demo", "src\i18n.Demo\i18n.Demo.csproj", "{39F612C9-123C-4B33-8358-75F854A7612D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "i18n.Demo", "src\i18n.Demo\i18n.Demo.csproj", "{39F612C9-123C-4B33-8358-75F854A7612D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

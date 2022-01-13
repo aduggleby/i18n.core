@@ -119,13 +119,23 @@ namespace i18n.Core.Middleware
 
             var streamResponseBodyFeature = new StreamResponseBodyFeature(responseBodyPooledStream);
             context.Features.Set<IHttpResponseBodyFeature>(streamResponseBodyFeature);
+            try
+            {
+                await _next(context).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Exception page is not showing when I18N middleware is loaded in ASP.NET 6. Not sure why at the moment ...
+                _logger?.LogError("Exception thrown: " + ex.ToString());
 
-            await _next(context).ConfigureAwait(false);
+                var stringContent = new StringContent("An error occured. Check log.", requestEncoding, "text/plain");
+                await stringContent.CopyToAsync(httpResponseBodyFeature.Stream, cancellationToken);
+            }
 
             // Force dynamic content type in order reset Content-Length header.
             httpResponseFeature.Headers.ContentLength = null;
 
-            var httpResponseBodyStream = (Stream) responseBodyPooledStream;
+            var httpResponseBodyStream = (Stream)responseBodyPooledStream;
             httpResponseBodyStream.Seek(0, SeekOrigin.Begin);
 
             var contentType = GetRequestContentType(context);
@@ -140,7 +150,7 @@ namespace i18n.Core.Middleware
                     $"Request path: {context.Request.Path}. Culture name: {cultureDictionary.CultureName}. Translations: {cultureDictionary.Translations.Count}.");
 
                 var responseBody = await ReadResponseBodyAsStringAsync(httpResponseBodyStream, requestEncoding);
-                
+
                 string responseBodyTranslated;
                 if (webHostEnvironment.IsDevelopment())
                 {

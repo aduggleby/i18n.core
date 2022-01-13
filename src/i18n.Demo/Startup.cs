@@ -50,7 +50,8 @@ namespace i18n.Demo
                 // Configure middleware options here.
             });
 
-            services.AddControllersWithViews();
+            services.AddRazorPages();
+           // services.AddControllersWithViews();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -70,13 +71,15 @@ namespace i18n.Demo
             app.UseStaticFiles();
             app.UseRouting();
             app.UseAuthorization();
+            
             app.UseI18NRequestLocalization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllerRoute(
-                    name: "default",
-                    pattern: "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapRazorPages();
+                //endpoints.MapControllerRoute(
+                //    name: "default",
+                //    pattern: "{controller=Home}/{action=Index}/{id?}");
             });
         }
     }
